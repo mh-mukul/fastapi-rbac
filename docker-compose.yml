@@ -1,0 +1,21 @@
+services:
+  # FastAPI app service
+  fast_api:
+    build: .
+    container_name: fast_api_backend
+    image: fast_api_backend
+    restart: always
+    ports:
+      - "${DOCKER_PORT:-8001}:8001"
+    environment:
+      - TZ=Asia/Dhaka
+    volumes:
+      - ${LOG_DIR}:/app/${LOG_DIR}
+      - ./:/app
+    networks:
+      - custom-network
+    command: uvicorn app:app --host 0.0.0.0 --port 8001
+
+networks:
+  custom-network:
+    driver: bridge
