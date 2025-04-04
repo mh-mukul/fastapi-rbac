@@ -18,7 +18,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     # Custom error response
     return JSONResponse(
-        status_code=200,
+        status_code=400,
         content={
             "status": 400,
             "message": error_message,
@@ -30,7 +30,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
-        status_code=200,
+        status_code=500,
         content={
             "status": 500,
             "message": "Something went wrong!",
@@ -42,9 +42,9 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.exception_handler(APIKeyException)
 async def api_key_exception_handler(request: Request, exc: APIKeyException):
     return JSONResponse(
-        status_code=200,
+        status_code=401,
         content={
-            "status": 400,
+            "status": 401,
             "message": exc.message,
             "data": {}
         }
@@ -54,7 +54,7 @@ async def api_key_exception_handler(request: Request, exc: APIKeyException):
 @app.exception_handler(JWTException)
 async def jwt_exception_handler(request: Request, exc: JWTException):
     return JSONResponse(
-        status_code=200,
+        status_code=401,
         content={
             "status": 401,
             "message": exc.message,
@@ -66,7 +66,7 @@ async def jwt_exception_handler(request: Request, exc: JWTException):
 @app.exception_handler(UnauthorizedException)
 async def unauthorized_exception_handler(request: Request, exc: UnauthorizedException):
     return JSONResponse(
-        status_code=200,
+        status_code=403,
         content={
             "status": 403,
             "message": exc.message,

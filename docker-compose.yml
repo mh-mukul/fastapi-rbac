@@ -14,7 +14,7 @@ services:
       - ./:/app
     networks:
       - custom-network
-    command: uvicorn app:app --host 0.0.0.0 --port 8001
+    command: uvicorn app:app --host 0.0.0.0 --port 8001 --workers 4
 
 networks:
   custom-network:
