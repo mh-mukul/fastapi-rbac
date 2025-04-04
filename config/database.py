@@ -25,8 +25,8 @@ if DB_TYPE == "mysql":
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         pool_recycle=180,  # recycles the connection after 3 minutes
-        pool_size=10,  # maximum number of connections to keep open
-        max_overflow=20,  # Allow more overflow connections
+        pool_size=20,  # maximum number of connections to keep open
+        max_overflow=50,  # Allow more overflow connections
         pool_timeout=60,  # Increase the timeout to wait for a connection
     )
 
