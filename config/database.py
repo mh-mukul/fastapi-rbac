@@ -24,10 +24,10 @@ if DB_TYPE == "mysql":
 
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        pool_recycle=180,  # recycles the connection after 3 minutes
-        pool_size=20,  # maximum number of connections to keep open
-        max_overflow=50,  # Allow more overflow connections
-        pool_timeout=60,  # Increase the timeout to wait for a connection
+        pool_recycle=int(os.environ.get("POOL_RECYCLE", 180)),  # Time(in sec) after the connection is recycled
+        pool_size=int(os.environ.get("POOL_SIZE", 10)),         # Number of connections to keep open in the pool
+        max_overflow=int(os.environ.get("MAX_OVERFLOW", 20)),   # Number of connections to allow beyond the pool size
+        pool_timeout=int(os.environ.get("POOL_TIMEOUT", 60)),   # Time(in sec) to wait before giving up on getting a connection
     )
 
 elif DB_TYPE == "sqlite":
