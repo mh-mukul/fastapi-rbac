@@ -1,3 +1,4 @@
+import uuid
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Request, Depends
@@ -33,11 +34,12 @@ async def login(
     if not user.is_active:
         return response.error_response(403, message="Inactive user")
 
+    jti = str(uuid.uuid4())
     access_token = create_access_token(
-        {"user_id": user.id, "phone": user.phone})
+        data={"user_id": user.id, "phone": user.phone}, jti=jti)
     refresh_token = create_refresh_token(
-        db,
-        {"user_id": user.id, "phone": user.phone})
+        db=db,
+        data={"user_id": user.id, "phone": user.phone}, jti=jti)
 
     # Fetch permissions based on the user's role
     permissions_query = (
@@ -99,7 +101,9 @@ async def refresh_token(
     """
     payload = decode_refresh_token(db, data.refresh_token)
     access_token = create_access_token(
-        {"user_id": payload.get("user_id"), "phone": payload.get("phone")}
+        data={"user_id": payload.get(
+            "user_id"), "phone": payload.get("phone")},
+        jti=payload.get("jti")
     )
 
     resp_data = {

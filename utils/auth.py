@@ -1,7 +1,5 @@
 import os
 import jwt
-import uuid
-from fastapi import Request
 from fastapi import Depends
 from dotenv import load_dotenv
 from typing import Optional, List
@@ -22,7 +20,7 @@ load_dotenv()
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES",30))
+    os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 REFRESH_TOKEN_EXPIRE_MINUTES = int(
     os.environ.get("JWT_REFRESH_TOKEN_EXPIRE_MINUTES", 60*24*7))
 
@@ -30,7 +28,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, jti: str, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a JWT access token.
     """
@@ -40,17 +38,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + \
             timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "jti": jti, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-def create_refresh_token(db: Session, data: dict, expires_delta: Optional[timedelta] = None):
+def create_refresh_token(db: Session, data: dict, jti: str, expires_delta: Optional[timedelta] = None):
     """
     Create a JWT refresh token.
     """
     to_encode = data.copy()
-    jti = str(uuid.uuid4())
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -74,12 +71,16 @@ def decode_access_token(db: Session, token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "access":
-            raise JWTException(401, "Invalid token type")
+            raise JWTException(401, message="Invalid token type")
+
+        check_blacklist_token(db=db, jti=payload.get("jti"))
+        match_jti_from_db(db=db, jti=payload.get("jti"),
+                          user_id=payload.get("user_id"))
         return payload
     except jwt.ExpiredSignatureError:
-        raise JWTException(401, "Token has expired")
+        raise JWTException(401, message="Token has expired")
     except jwt.InvalidTokenError:
-        raise JWTException(401, "Invalid token")
+        raise JWTException(401, message="Invalid token")
 
 
 def decode_refresh_token(db: Session, token: str) -> dict:
@@ -88,14 +89,14 @@ def decode_refresh_token(db: Session, token: str) -> dict:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        check_blacklist_token(token, db)
+        check_blacklist_token(db=db, jti=payload.get("jti"))
         if payload.get("type") != "refresh":
-            raise JWTException(401, "Invalid token type")
+            raise JWTException(401, message="Invalid token type")
         return payload
     except jwt.ExpiredSignatureError:
-        raise JWTException(401, "Token has expired")
+        raise JWTException(401, message="Token has expired")
     except jwt.InvalidTokenError:
-        raise JWTException(401, "Invalid token")
+        raise JWTException(401, message="Invalid token")
 
 
 def hash_password(password: str) -> str:
@@ -106,24 +107,20 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    token = request.headers.get("Authorization")
-    if not token:
-        raise JWTException(401, "Authorization token missing")
-
-    token = token.split(" ")[1]  # Extract token part after "Bearer"
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = decode_access_token(db, token)
         user_id = payload.get('user_id')
         if not user_id:
-            raise JWTException(401, "Invalid token")
+            raise JWTException(401, message="Invalid token")
     except jwt.PyJWTError:
-        raise JWTException(401, "Could not validate credentials")
+        raise JWTException(
+            401, message="Could not validate credentials")
 
     user_id = payload.get("user_id")
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.is_deleted or not user.is_active:
-        raise JWTException(401, "Invalid user")
+        raise JWTException(401, message="Invalid user")
     return user
 
 
@@ -131,31 +128,34 @@ def blacklist_token(token: str, db: Session):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.PyJWTError:
-        raise JWTException(401, "Invalid token")
+        raise JWTException(
+            401, message="Invalid token")
     jti = payload.get("jti")
-    check_blacklist_token(token, db)
+    check_blacklist_token(db=db, jti=jti)
     db_token = db.query(UserToken).filter(
         UserToken.jti == jti, UserToken.is_blacklisted == False).first()
     if db_token:
         db_token.is_blacklisted = True
         db.commit()
     else:
-        raise JWTException(401, "Invalid token")
+        raise JWTException(401, message="Invalid token")
 
 
-def check_blacklist_token(token: str, db: Session):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except jwt.PyJWTError:
-        raise JWTException(401, "Invalid token")
-    jti = payload.get("jti")
-
+def check_blacklist_token(db: Session, jti: str):
     db_token = db.query(UserToken).filter(
         UserToken.jti == jti, UserToken.is_blacklisted == True).first()
     if db_token:
-        raise JWTException(401, "Token has been blacklisted")
+        raise JWTException(401, message="Token has been blacklisted")
     else:
         return True
+
+
+def match_jti_from_db(db: Session, jti: str, user_id: int) -> Optional[UserToken]:
+    db_token = db.query(UserToken).filter(
+        UserToken.jti == jti, UserToken.user_id == user_id, UserToken.is_blacklisted == False).first()
+    if not db_token:
+        raise JWTException(401, message="Invalid token")
+    return db_token
 
 
 def has_role_permission(required_permissions: List[str]):
