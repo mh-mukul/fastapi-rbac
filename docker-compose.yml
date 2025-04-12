@@ -1,9 +1,9 @@
 services:
   # FastAPI app service
-  fast_api:
+  fastapi_backend:
     build: .
-    container_name: fast_api_backend
-    image: fast_api_backend
+    container_name: fastapi_backend
+    image: fastapi_backend
     restart: always
     ports:
       - "${DOCKER_PORT:-8001}:8001"
