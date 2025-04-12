@@ -9,7 +9,7 @@ from handlers.exception_handler import (
     validation_exception_handler, general_exception_handler, api_key_exception_handler,
     jwt_exception_handler, unauthorized_exception_handler)
 
-from routes import auth, users, departments, permissions, roles
+from routes import auth, permissions, departments, roles, users
 
 load_dotenv()
 
@@ -45,10 +45,10 @@ app.add_exception_handler(UnauthorizedException,
 
 # Include routes
 app.include_router(auth.router, prefix="/api/v1")
-app.include_router(users.router, prefix="/api/v1")
-app.include_router(departments.router, prefix="/api/v1")
 app.include_router(permissions.router, prefix="/api/v1")
+app.include_router(departments.router, prefix="/api/v1")
 app.include_router(roles.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
 
 
 @app.get("/")
