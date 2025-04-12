@@ -18,9 +18,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     # Custom error response
     return JSONResponse(
-        status_code=400,
+        status_code=422,
         content={
-            "status": 400,
+            "status": 422,
             "message": error_message,
             "data": {}
         },
