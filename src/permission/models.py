@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, ForeignKey
 
-from models.abstract import AbstractBase
+from src.models import AbstractBase
 
 
 class Module(AbstractBase):

@@ -2,14 +2,14 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Request, Depends
 
-from config.database import get_db
-from utils.helper import ResponseHelper
-from utils.auth import get_current_user
+from configs.database import get_db
+from src.helpers import ResponseHelper
+from src.auth.dependencies import get_current_user
 
-from models.user import User
-from models.department import Department
-from schemas.abstract import Pagination
-from schemas.department import DepartmentCreate, DepartmentUpdate, DepartmentGet, DepartmentListResponse
+from src.user.models import User
+from src.department.models import Department
+from src.schemas import Pagination
+from src.department.schemas import DepartmentCreate, DepartmentUpdate, DepartmentGet, DepartmentListResponse
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
 response = ResponseHelper()

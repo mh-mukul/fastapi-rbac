@@ -3,10 +3,13 @@ import argparse
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from config.database import get_db
-from utils.auth import hash_password
+from configs.database import get_db
+from src.auth.utils import hash_password
 
-from models import ApiKey, Department, User, Module, Permission
+from src.auth.models import ApiKey
+from src.department.models import Department
+from src.user.models import User
+from src.permission.models import Module, Permission
 
 
 def generate_key(db: Session = Depends(get_db)):
@@ -16,8 +19,11 @@ def generate_key(db: Session = Depends(get_db)):
 
     db.add(api_key)
     db.commit()
-
-    print(f"New API key generated: {new_key}")
+    
+    print("API key generated successfully.\nShow? (y/n)")
+    show = input().strip().lower()
+    if show == "y":
+        print(f"API key: {api_key.key}")
 
 
 def create_department(db: Session = Depends(get_db)):

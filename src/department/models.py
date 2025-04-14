@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String
 
-from models.abstract import AbstractBase
+from src.models import AbstractBase
 
 
 class Department(AbstractBase):

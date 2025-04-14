@@ -4,12 +4,16 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
-from handlers.custom_exceptions import APIKeyException, JWTException, UnauthorizedException
-from handlers.exception_handler import (
+from src.auth.exceptions import APIKeyException, JWTException, UnauthorizedException
+from src.exception_handles import (
     validation_exception_handler, general_exception_handler, api_key_exception_handler,
     jwt_exception_handler, unauthorized_exception_handler)
 
-from routes import auth, permissions, departments, roles, users
+from src.permission import routes as permission_routes
+from src.auth import routes as auth_routes
+from src.department import routes as department_routes
+from src.role import routes as role_routes
+from src.user import routes as user_routes
 
 load_dotenv()
 
@@ -44,11 +48,11 @@ app.add_exception_handler(UnauthorizedException,
 
 
 # Include routes
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(permissions.router, prefix="/api/v1")
-app.include_router(departments.router, prefix="/api/v1")
-app.include_router(roles.router, prefix="/api/v1")
-app.include_router(users.router, prefix="/api/v1")
+app.include_router(auth_routes.router, prefix="/api/v1")
+app.include_router(permission_routes.router, prefix="/api/v1")
+app.include_router(department_routes.router, prefix="/api/v1")
+app.include_router(role_routes.router, prefix="/api/v1")
+app.include_router(user_routes.router, prefix="/api/v1")
 
 
 @app.get("/")

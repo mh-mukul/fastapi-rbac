@@ -2,13 +2,14 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Request, Depends
 
-from config.database import get_db
-from utils.helper import ResponseHelper
-from utils.auth import get_current_user, hash_password, has_role_permission
+from configs.database import get_db
+from src.helpers import ResponseHelper
+from src.auth.utils import hash_password
+from src.auth.dependencies import get_current_user, has_role_permission
 
-from models.user import User, UserRole
-from schemas.abstract import Pagination
-from schemas.user import UserGet, UserListResponse, UserCreate, UserUpdate
+from src.user.models import User, UserRole
+from src.schemas import Pagination
+from src.user.schemas import UserGet, UserListResponse, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
 response = ResponseHelper()
@@ -42,33 +43,23 @@ async def get_users(
     if is_active is not None:
         query = query.filter(User.is_active == is_active)
 
-    total_records = query.count()
-    total_pages = (total_records + limit - 1) // limit
-    offset = (page - 1) * limit
+    users, total = response.paginate_query(query, page, limit)
 
-    data_list = (
-        query.order_by(User.name.asc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-
-    users = [UserGet.model_validate(user) for user in data_list]
+    formatted_users = [UserGet.model_validate(user) for user in users]
 
     base_url = str(request.url.path)
-    previous_page_url = f"{base_url}?page={page - 1}&limit={limit}" if page > 1 else None
-    next_page_url = f"{base_url}?page={page + 1}&limit={limit}" if page < total_pages else None
 
     pagination_data = Pagination(
         current_page=page,
-        total_pages=total_pages,
-        total_records=total_records,
+        total_pages=total // limit + (1 if total % limit else 0),
+        total_records=total,
         record_per_page=limit,
-        previous_page_url=previous_page_url,
-        next_page_url=next_page_url
+        previous_page_url=f"{base_url}?page={page - 1}&limit={limit}" if page > 1 else None,
+        next_page_url=f"{request.url.path}?page={page + 1}&limit={limit}" if (
+            page * limit) < total else None,
     )
     resp_data = UserListResponse(
-        users=users,
+        users=formatted_users,
         pagination=pagination_data
     )
 

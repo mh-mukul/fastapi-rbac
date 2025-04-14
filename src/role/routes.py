@@ -2,21 +2,22 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Request, Depends
 
-from config.logger import logger
-from config.database import get_db
-from utils.helper import ResponseHelper
-from utils.auth import get_current_user, has_role_permission
+from configs.logger import logger
+from configs.database import get_db
+from src.helpers import ResponseHelper
+from src.auth.dependencies import get_current_user, has_role_permission
 
-from models import User, UserRole, RolePermission
-from schemas.abstract import Pagination
-from schemas.role import RoleGet, RoleListResponse, RoleCreate, RoleUpdate
-from services.role_service import get_role_permissions, format_role
+from src.permission.models import RolePermission
+from src.user.models import User, UserRole
+from src.schemas import Pagination
+from src.role.schemas import RoleGet, RoleListResponse, RoleCreate, RoleUpdate
+from src.role.services import get_role_permissions, format_role
 
-router = APIRouter()
+router = APIRouter(prefix="/roles", tags=["Roles"])
 response = ResponseHelper()
 
 
-@router.get("/roles")
+@router.get("")
 async def get_roles(
     request: Request,
     page: int = 1,
@@ -58,7 +59,7 @@ async def get_roles(
     return response.success_response(200, "success", RoleListResponse(pagination=pagination, roles=formatted_roles))
 
 
-@router.get("/roles/{role_id}")
+@router.get("/{role_id}")
 async def get_role(
     role_id: int,
     db: Session = Depends(get_db),
@@ -83,7 +84,7 @@ async def get_role(
     return response.success_response(200, "Success", resp_data)
 
 
-@router.post("/roles")
+@router.post("")
 async def create_role(
     request: Request,
     data: RoleCreate,
@@ -137,7 +138,7 @@ async def create_role(
     return response.success_response(201, "Role created successfully", resp_data)
 
 
-@router.put("/roles/{role_id}")
+@router.put("/{role_id}")
 async def update_role(
     role_id: int,
     data: RoleUpdate,
@@ -211,7 +212,7 @@ async def update_role(
     return response.success_response(200, "Role updated successfully", resp_data)
 
 
-@router.delete("/roles/{role_id}")
+@router.delete("/{role_id}")
 async def delete_role(
     role_id: int,
     db: Session = Depends(get_db),

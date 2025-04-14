@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
-from models import RolePermission, Module, Permission, UserRole
+from src.permission.models import RolePermission, Module, Permission
+from src.user.models import UserRole
 
 
 def get_role_permissions(db: Session, role_ids: list[int]) -> dict[int, list[dict]]:

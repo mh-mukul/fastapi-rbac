@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, DateTime, Boolean
 
-from config.database import Base
+from configs.database import Base
 
 
 class AbstractBase(Base):

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 
-from models.abstract import AbstractBase
+from src.models import AbstractBase
 
 
 class ApiKey(AbstractBase):

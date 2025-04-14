@@ -1,21 +1,14 @@
 import os
 import jwt
 from dotenv import load_dotenv
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy.orm import Session
-from fastapi import Depends, Security
 from passlib.context import CryptContext
-from fastapi.security.api_key import APIKeyHeader
-from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
-from handlers.exception_handler import APIKeyException
 
-from config.database import get_db
-from handlers.custom_exceptions import JWTException, UnauthorizedException
+from src.auth.exceptions import JWTException
 
-from models.user import User
-from models.auth import ApiKey, UserToken
-from models.permission import Permission, RolePermission
+from src.auth.models import UserToken
 
 load_dotenv()
 
@@ -27,31 +20,6 @@ REFRESH_TOKEN_EXPIRE_MINUTES = int(
     os.environ.get("JWT_REFRESH_TOKEN_EXPIRE_MINUTES", 60*24*7))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-
-api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
-
-
-async def get_api_key(
-    api_key: str = Security(api_key_header),
-    db: Session = Depends(get_db)
-):
-    if api_key is None:
-        raise APIKeyException(
-            status=401, message="Authorization header missing")
-
-    token = api_key.replace("Bearer ", "")
-    api_key_obj = db.query(ApiKey).filter(
-        ApiKey.key == token,
-        ApiKey.is_active == True,
-        ApiKey.is_deleted == False
-    ).first()
-
-    if not api_key_obj:
-        raise APIKeyException(status=403, message="Invalid API Key")
-
-    return api_key_obj
 
 
 def create_access_token(data: dict, jti: str, expires_delta: Optional[timedelta] = None) -> str:
@@ -133,23 +101,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    try:
-        payload = decode_access_token(db, token)
-        user_id = payload.get('user_id')
-        if not user_id:
-            raise JWTException(401, message="Invalid token")
-    except jwt.PyJWTError:
-        raise JWTException(
-            401, message="Could not validate credentials")
-
-    user_id = payload.get("user_id")
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or user.is_deleted or not user.is_active:
-        raise JWTException(401, message="Invalid user")
-    return user
-
-
 def blacklist_token(token: str, db: Session):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -182,27 +133,3 @@ def match_jti_from_db(db: Session, jti: str, user_id: int) -> Optional[UserToken
     if not db_token:
         raise JWTException(401, message="Invalid token")
     return db_token
-
-
-def has_role_permission(required_permissions: List[str]):
-    async def dependency(
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
-    ):
-        # Check if the user is a superuser
-        if current_user.is_superuser:
-            return  # Bypass permission checks for superusers
-
-        # Fetch user's role permissions
-        user_permissions = (
-            db.query(Permission.name)
-            .join(RolePermission, Permission.id == RolePermission.permission_id)
-            .filter(RolePermission.role_id == current_user.role_id, RolePermission.is_deleted == False)
-            .all()
-        )
-        user_permissions = [perm.name for perm in user_permissions]
-
-        # Check if the user has the required permissions
-        if not any(perm in user_permissions for perm in required_permissions):
-            raise UnauthorizedException(403, "Permission denied")
-    return dependency

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from schemas.abstract import Pagination
+from src.schemas import Pagination
 
 
 class UserBase(BaseModel):

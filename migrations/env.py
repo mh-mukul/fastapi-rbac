@@ -1,10 +1,13 @@
-
 from alembic import context
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
-from config.database import Base, SQLALCHEMY_DATABASE_URL
-import models
+from configs.database import Base, SQLALCHEMY_DATABASE_URL
+
+from src.auth.models import ApiKey, UserToken
+from src.user.models import User, UserRole
+from src.department.models import Department
+from src.permission.models import Module, Permission, RolePermission
 
 # Alembic Config object
 config = context.config
